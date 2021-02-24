@@ -1,7 +1,7 @@
 const server = require("../src/server");
 const request = require("supertest")(server);
 const mongoose = require("mongoose");
-
+const Cookies = require("expect-cookies");
 const UserSchema = require("../src/services/users/schema");
 const UserModel = require("mongoose").model("User", UserSchema);
 
@@ -79,10 +79,14 @@ describe("Stage II: testing user creation and login", () => {
     expect(response.body.errorCode).toBe("wrong_credentials");
   });
 
+  let session = null;
   it("should return a valid token when loggin in with correct credentials", async () => {
     // "VALID_TOKEN"
-    const response = await request.post("/users/login").send(validCredentials); //
-
+    const response = await request
+      .post("/users/login")
+      .set("Cookie", ["token=12345667"])
+      .send(validCredentials);
+    session = response.header["your-cookie"];
     const { token } = response.body;
     expect(token).toBe(validToken);
   });
@@ -90,12 +94,27 @@ describe("Stage II: testing user creation and login", () => {
   it("should NOT return a valid token when loggin in with INCORRECT credentials", async () => {
     const response = await request
       .post("/users/login")
-      .send(invalidCredentials);
+      .send(incorrectCredentials);
 
     expect(response.status).toBe(400);
 
     const { token } = response.body;
     expect(token).not.toBeDefined();
+  });
+
+  const cat = {
+    id: "5ab10fc288b001000f9168fa",
+    created_at: "2018-03-20T13:42:26.075Z",
+    tags: ["facecat"],
+    url: "/cat/5ab10fc288b001000f9168fa",
+  };
+
+  it("should return cats", async () => {
+    const response = await request.get("/users/cats").send(cat);
+    expect(response.status).toBe(201);
+    expect(typeof response.body).toBe("object");
+    expect(response.body.url).toBeDefined;
+    expect(typeof response.body.url).toBe("string");
   });
 });
 
